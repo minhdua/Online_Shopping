@@ -79,7 +79,7 @@ class JWTAuthentication(authentication.BaseAuthentication):
                     return None
             except DashBoard.DoesNotExist:
                 return None
-
+                print(token)
             return self._authenticate_shops(request, token)
         return None
 

@@ -5,18 +5,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import HttpResponse
 from .renderers import UserJSONRenderer
-from .serializers import (
-    LogoutSerializer,LoginSerializer, RegistrationSerializer, UserSerializer,RegistrationSerializer,UserBlockSerializer, UserUnBlockSerializer,)
+from .serializers import *
 from rest_framework import generics
 from .models import User,DashBoard
 from .permissions import *
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.contrib.auth import login,authenticate,logout
 
-class RegistrationAPIView(APIView):
+class UserRegistrationAPIView(APIView):
     permission_classes = (AllowAny,)
     renderer_classes = (UserJSONRenderer,)
-    serializer_class = RegistrationSerializer
+    serializer_class = UserRegistrationSerializer
 
     def post(self, request):
         user = request.data.get('user', {})
@@ -28,40 +28,55 @@ class RegistrationAPIView(APIView):
 class UserLoginAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     renderer_classes = (UserJSONRenderer,)
-    serializer_class = LoginSerializer
+    serializer_class = UserLoginSerializer
 
     def post(self, request):
         user = request.user
-        request.session['user']=user
-        return Response({"detail":"login successful"}, status=status.HTTP_200_OK)
+        request.session['user']=user.id
+        token = request.auth
+        request.session['auth']=token
+        print(request.session['user'])
+        return Response({'detail':'login successful','user':user.email}, status=status.HTTP_200_OK)
+
+class TestAPIView(APIView):
+    permission_classes = (IsLogin,)
+    renderer_classes = (UserJSONRenderer,)
+    serializer_class = UserLoginSerializer
+
+    def post(self, request):
+        return Response({'detail':'has login'}, status=status.HTTP_200_OK)
 
 class UserGetTokenAPIView(APIView):
     permission_classes = (AllowAny,)
     renderer_classes = (UserJSONRenderer,)
-    serializer_class = LoginSerializer
+    serializer_class = UserGetTokenSerializer
 
     def post(self, request):
         user = request.data.get('user', {})
         serializer = self.serializer_class(data=user)
         serializer.is_valid(raise_exception=True)
+        try:
+            login(request,user)
+            token = request.session['auth']
+            dashboard = DashBoard.objects.get(token=token)
+            dashboard.stop
+            del request.session['auth']
+        except:
+            pass
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserLogoutAPIView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsLogin,)
     renderer_classes = (UserJSONRenderer,)
     serializer_class = LogoutSerializer
     def delete(self, request):
-        print(request.session['user'])
-        if 'HTTP_AUTHORIZATION' in request.META:
-            token = request.META['HTTP_AUTHORIZATION'].split()[1]
-            user = request.META['HTTP_AUTHORIZATION'].split()[0]
-            print(user)
-            try:
-                dashboard = DashBoard.objects.get(token=token)
-            except DashBoard.DoesNotExist:
-                dashboard = DashBoard(token=token)
-            dashboard.stop
-            return Response({"message": "logout successful!"},status=status.HTTP_200_OK)
+        #print(request.session['user'])
+        try:
+            del request.session['user']
+            del request.seesion['shop']
+        except:
+            return Response({"message": "you alredy have logined"},status=status.HTTP_200_OK)
+        return Response({"message": "logout successful!"},status=status.HTTP_200_OK)
 
 class UserListAPIView(ListAPIView):
     permission_classes = (IsAdmin,)
@@ -84,14 +99,11 @@ class UserUnBlookAPIView(UpdateAPIView):
     serializer_class = UserUnBlockSerializer
 
 class UserAPIView(RetrieveUpdateAPIView):
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsOwnerOrAdmin,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-from .models import *
-from .serializers import *
-# Create your views here.
-from apps.authentication.permissions import IsAdmin
+
 
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -117,14 +129,32 @@ class LabelRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 class ShopListCreateAPIView(generics.ListCreateAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsLogin,)
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=User.objects.get(pk=self.request.session['user']))
 
-class ShopRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+class ShopRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
-    permission_classes = (IsOwner,IsActiveShop,)
+    permission_classes = (IsOwnerShopOrAdmin,)
+
+class ShopLoginAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    renderer_classes = (UserJSONRenderer,)
+    serializer_class = ShopLoginSerializer
+
+    def get(self, request):
+        shop = request.user
+        request.session['shop']=shop.id
+        token = request.auth
+        request.session['auth_shop']=token
+        print(request.session['shop'])
+        return Response({'detail':'login shop successful','shop':shop.name}, status=status.HTTP_200_OK)
+
+class ShopGetTokenAPIView(generics.RetrieveAPIView):
+    queryset = Shop.objects.all()
+    serializer_class = ShopGetTokenSerializer
+    permission_classes = (IsOwnerShopOrAdmin,)
 
 class ShopActiveAPIView(generics.UpdateAPIView):
     queryset = Shop.objects.all()
@@ -155,14 +185,14 @@ class ShopRejectListAPIView(generics.ListAPIView):
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = (IsOwerShop,)
+    permission_classes = (IsOwnerShopOrAdmin,)
     def perform_create(self, serializer):
         serializer.save(shop=self.request.user)
 
 class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = (IsOwerShop,)
+    permission_classes = (IsOwnerOrAdmin,)
 
 class CartCreateProductAPIView(APIView):
     queryset = Cart.objects.all()

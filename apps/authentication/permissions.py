@@ -1,18 +1,42 @@
 from rest_framework import permissions
-
+from .models import *
 
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_superuser
+        try:
+            pk=request.session['user']
+            user = User.objects.get(pk=pk)
+        except:
+            return False
+        return user.is_superuser
 
-class IsOwner(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        return obj.user == request.user
+class IsLogin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        try:
+            user = request.session['user']
+            return True
+        except:
+            return False
 
-class IsOwerShop(permissions.BasePermission):
+class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        print('request.user',request.user,'request.auth',request.auth,'request.obj',obj.shop)
-        return obj.shop == request.user
+        try:
+            user = User.objects.get(pk = request.session['user'] )
+            print(obj.pk == user.pk or user.is_superuser)
+            return (obj.pk == user.pk or user.is_superuser )
+        except:
+            return False
+
+
+
+class IsOwnerShopOrAdmin(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        try:
+            user = User.objects.get(pk = request.session['user'] )
+            print(obj.user == user or user.is_superuser)
+            return (obj.user == user or user.is_superuser )
+        except:
+            return False
 
 class IsActiveShop(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):

@@ -6,11 +6,13 @@ from . import tests
 
 app_name = 'authentication'
 urlpatterns = [
-    path('registers/', RegistrationAPIView.as_view()),
+    path('registers/', UserRegistrationAPIView.as_view()),
     path('token/', UserGetTokenAPIView.as_view()),
     path('login/', UserLoginAPIView.as_view()),
+    path('test/', TestAPIView.as_view()),
     path('list/', UserListAPIView.as_view()),
     path('<int:pk>/detail/',UserAPIView.as_view()),
+
     path('<int:pk>/block/',UserBlookAPIView.as_view()),
     path('<int:pk>/unblock/',UserUnBlookAPIView.as_view()),
     path('logout/',UserLogoutAPIView.as_view()),
@@ -21,12 +23,14 @@ urlpatterns = [
     path('label/<int:pk>/',LabelRetrieveUpdateDestroyAPIView.as_view()),
 
     path('shops/',ShopListCreateAPIView.as_view()),
-    path('shops/<int:pk>/',ShopRetrieveUpdateDestroyAPIView.as_view()),
+    path('shops/<int:pk>/',ShopRetrieveUpdateAPIView.as_view()),
     path('shops/<int:pk>/accept/',ShopActiveAPIView.as_view()),
     path('shops/<int:pk>/reject/',ShopRejectAPIView.as_view()),
     path('shops/spending/',ShopSpendingListAPIView.as_view()),
-    path('shops/active/',ShopActiveListAPIView.as_view()),
-    path('shops/reject/',ShopRejectListAPIView.as_view()),
+    path('shops/activated/',ShopActiveListAPIView.as_view()),
+    path('shops/rejected/',ShopRejectListAPIView.as_view()),
+    path('shops/<int:pk>/token/',ShopGetTokenAPIView.as_view()),
+    path('shops/<int:pk>/login/',ShopLoginAPIView.as_view()),
 
     path('products/',ProductListCreateAPIView.as_view()),
     path('products/<int:pk>/',ProductRetrieveUpdateDestroyAPIView.as_view()),
