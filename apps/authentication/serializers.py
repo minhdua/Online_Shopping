@@ -123,52 +123,25 @@ class ShopSerializer(serializers.ModelSerializer):
 class ShopGetTokenSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length=128,
     min_length=8,write_only=True)
-    token = ""
-    def get(self, instance, validated_data):
-        if instance.is_active:
-            token = instance.token
-            DashBoard(token=token).save()
-            return {"token":token}
-        else:
-            return {"Message":"your shop not actived now"}
-
     class Meta:
         model = Shop
         fields = ['name','token']
-
 class ShopLoginSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = Shop
         fields = '__all__'
         read_only_fields = ('__all__',)
-        
+
 class ShopActiveSerializer(serializers.ModelSerializer):
-
-    def update(self, instance, validated_data):
-        instance.active()
-        token = instance.token
-        DashBoard(token=token).save()
-        return instance
-
     class Meta:
         model = Shop
         fields = ('name','address','phone','token')
         #read_only_fields = ('name','address','phone','token')
 
 class ShopRejectSerializer(serializers.ModelSerializer):
-    content = serializers.CharField(max_length=128,
-    min_length=8,write_only=True,default="wrong informations")
-
-    def update(self, instance, validated_data):
-        if validated_data.get('content'):
-            content = validated_data.get('content')
-            #print(content)
-        Message(content=content,shop=instance).save()
-        instance.reject()#status = 'rejected'
-        return instance
     class Meta:
         model = Shop
-        fields = ('id','name','content')
+        fields = ('id','name')
         #read_only_fields = ('__all__',)
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -178,27 +151,17 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Product.objects.create(**validated_data)
+
 class CartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = '__all__'
 
-    def create(self, validated_data):
-        return Cart.objects.create(**validated_data)
+class CartSerializer(serializers.Serializer):
+    class Meta:
+        model = Product
+        fields = '__all__'
 
-class CartCreateSerializer(serializers.Serializer):
-
-    def update(self, instance,pk, validated_data):
-        product = instance
-        user = request.user
-        if validated_data.get('number'):
-            number = validated_data.get('number')
-            print(number)
-        else: number = 1
-        Cart(user=user,product=product,number=number).save()
-        return {
-            "detail":"added s:"
-        }
 
 
 class BillSerializer(serializers.ModelSerializer):

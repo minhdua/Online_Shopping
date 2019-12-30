@@ -10,27 +10,8 @@ from .models import User,DashBoard,Shop
 class JWTAuthentication(authentication.BaseAuthentication):
     authentication_header_prefix = 'Token'
     authentication_header_prefix2 = 'TokenShop'
+
     def authenticate(self, request):
-        """
-        The `authenticate` method is called on every request regardless of
-        whether the endpoint requires authentication.
-
-        `authenticate` has two possible return values:
-
-        1) `None` - We return `None` if we do not wish to authenticate. Usually
-                    this means we know authentication will fail. An example of
-                    this is when the request does not include a token in the
-                    headers.
-
-        2) `(user, token)` - We return a user/token combination when
-                             authentication is successful.
-
-                            If neither case is met, that means there's an error
-                            and we do not return anything.
-                            We simple raise the `AuthenticationFailed`
-                            exception and let Django REST Framework
-                            handle the rest.
-        """
         request.user = None
 
         # `auth_header` should be an array with two elements: 1) the name of
@@ -59,7 +40,7 @@ class JWTAuthentication(authentication.BaseAuthentication):
         # if we didn't decode these values.
         prefix = auth_header[0].decode('utf-8')
         token = auth_header[1].decode('utf-8')
-
+        print(token)
         if prefix.lower() == auth_header_prefix:
             # The auth header prefix is not what we expected. Do not attempt to
             # authenticate.
@@ -79,7 +60,6 @@ class JWTAuthentication(authentication.BaseAuthentication):
                     return None
             except DashBoard.DoesNotExist:
                 return None
-                print(token)
             return self._authenticate_shops(request, token)
         return None
 
@@ -112,10 +92,6 @@ class JWTAuthentication(authentication.BaseAuthentication):
         return (user, token)
 
     def _authenticate_shops(self, request, token):
-        """
-        Try to authenticate the given credentials. If authentication is
-        successful, return the user and token. If not, throw an error.
-        """
         try:
             payload = jwt.decode(token, settings.SECRET_KEY)
         except:
@@ -123,7 +99,7 @@ class JWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed(msg)
 
         try:
-            shop = Shop.objects.get(pk=payload['id'])
+            shop = Shop.objects.get(id=payload['id'])
         except Shop.DoesNotExist:
             msg = 'No shop matching this token was found.'
             raise exceptions.AuthenticationFailed(msg)
