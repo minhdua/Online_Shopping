@@ -3,10 +3,11 @@ from django.db import models
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.db import models
+#from apps.carts.models import CartDetail
+#from apps.categories_and_labels.models import Label
 from django.contrib.auth.models import (
     AbstractBaseUser, BaseUserManager, PermissionsMixin
 )
-
 class UserManager(BaseUserManager):
     def create_user(self, username, email, password=None):
         if username is None:
@@ -40,138 +41,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
     def __str__(self):
         return self.email
+
     @property
     def token(self):
         return self._generate_jwt_token()
-    def block(self):
-        self.is_active = False
-        self.save(update_fields=['is_active'])
-    def unblock(self):
-        self.is_active = True
-        self.save(update_fields=['is_active'])
+
+    def _generate_jwt_token(self):
+        dt = datetime.now() + timedelta(days=60)
+        token = jwt.encode({
+            'id': self.pk,
+            'exp': int(dt.strftime('%s'))
+        }, settings.SECRET_KEY, algorithm='HS256')
+        return token.decode('utf-8')
 
     def get_full_name(self):
-        return self.username
+        return self.email
 
     def get_short_name(self):
         return self.username
-
-    def _generate_jwt_token(self):
-        dt = datetime.now() + timedelta(days=60)
-        token = jwt.encode({
-            'id': self.pk,
-            'exp': int(dt.strftime('%s'))
-        }, settings.SECRET_KEY, algorithm='HS256')
-        return token.decode('utf-8')
-
-class DashBoard(models.Model):
-    id = models.AutoField(primary_key=True)
-    token = models.CharField(max_length=255,db_index=True,unique=True)
-    is_active = models.BooleanField(default=True)
-    def __str__(self):
-        return self.token
-    @property
-    def stop(self):
-        self.is_active = False
-        self.save()
-
-class Category(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=30,unique=True)
-    def __str__(self):
-        return self.name
-
-class Label(models.Model):
-    id = models.AutoField(primary_key=True)
-    category = models.ForeignKey(Category,on_delete=models.CASCADE)
-    name = models.CharField(max_length=30,unique=True)
-    describe = models.TextField(max_length=255,blank=True,null=True)
-    def __str__(self):
-        return self.name
-
-class ShopSpendingManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(status="spending")
-class ShopActiveManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(status="actived")
-class ShopRejectManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(status="rejected")
-
-class Shop(models.Model):
-    s = ((0,'waiting'),(1,'actived'),(-1,'rejected'))
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=30,unique=True)
-    address = models.CharField(max_length=255)
-    phone = models.CharField(max_length=10)
-    status = models.CharField(max_length=30,choices=s,default='spending')
-    user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
-    objects = models.Manager()
-    spending_objects = ShopSpendingManager()
-    active_objects = ShopActiveManager()
-    reject_objects = ShopRejectManager()
-    def __str__(self):
-        return self.name
-
-    @property
-    def token(self):
-        return self._generate_jwt_token()
-    #@property
-    def active(self):
-        self.status = "actived"
-        self.save(update_fields=['status'])
-
-    #@property
-    def reject(self):
-        self.status = "rejected"
-        self.save(update_fields=['status'])
-
-    def _generate_jwt_token(self):
-        dt = datetime.now() + timedelta(days=60)
-
-        token = jwt.encode({
-            'id': self.pk,
-            'exp': int(dt.strftime('%s'))
-        }, settings.SECRET_KEY, algorithm='HS256')
-
-        return token.decode('utf-8')
-
-
-
-class Message(models.Model):
-    id = models.AutoField(primary_key=True)
-    shop = models.ForeignKey(Shop,on_delete=models.CASCADE)
-    content = models.CharField(max_length=255)
-    date = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return self.content
-
-class Product(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=60,unique=True)
-    amount = models.IntegerField(default=0)
-    price = models.DecimalField(decimal_places=3,max_digits=60)
-    image = models.CharField(max_length=255,default="a/b/c")
-    shop = models.ForeignKey(Shop,on_delete=models.CASCADE,null=True)
-    label = models.ForeignKey(Label,on_delete=models.CASCADE,null=True)
-    def __str__(self):
-        return self.name
-
-class Cart(models.Model):
-    id = models.AutoField(primary_key=True)
-    number = models.IntegerField(default=1)
-    product = models.ForeignKey(Product,on_delete=models.CASCADE,null=True)
-    user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return self.product.name
-
-class Bill(models.Model):
-    id = models.AutoField(primary_key=True)
-    cart = models.ForeignKey(Cart,on_delete=models.CASCADE,null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    VAT = models.FloatField(default=1.5)
-    ship = models.DecimalField(decimal_places=3, max_digits=60)
-    def __str__(self):
-        return self.name

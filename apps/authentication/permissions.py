@@ -3,16 +3,24 @@ from .models import *
 
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        try:
-            pk=request.session['user']
-            user = User.objects.get(pk=pk)
-        except:
+        return request.user.is_superuser
+class AllowAnyCreateOrAdminList(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method == "GET":
+            print(request.user)
+            return request.user.is_superuser
+        else : return True
+class IsOwnerOrAdmin(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+            user = request.user
+            if request.method in ['GET','PUT']:
+                print('obj.pk=',obj.pk,'user.pk=',user.pk,'user.is_superuser=',user.is_superuser)
+                return obj.pk == user.pk or user.is_superuser
             return False
-        return user.is_superuser
+
 class IsOwnerOrAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        return True
-
+        return true
     def has_object_permission(self, request, view, obj):
         try:
             user = User.objects.get(pk = request.session['user'] )
@@ -23,6 +31,32 @@ class IsOwnerOrAdminOrReadOnly(permissions.BasePermission):
                 return obj.shop == shop or user.is_superuser
         except:
             return False
+
+class IsUserNormalOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method == "GET":
+            return True
+        elif request.method == "POST":
+            return (not request.user.is_superuser) and request.user.is_active
+        else: return False
+
+class IsOwnerShopOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        user = User.objects.get(pk=request.session['user'])
+        if request.method == 'GET':
+            return user.is_active
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        print('hello')
+        try:
+            user = User.objects.get(pk = request.session['user'] )
+            if request.method == 'GET':
+                print(obj.user,' ',user)
+                return obj.user == user or user.is_superuser
+        except:
+            return False
+
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         user = User.objects.get(pk=request.session['user'])
@@ -42,14 +76,6 @@ class IsLogin(permissions.BasePermission):
         except:
             return False
 
-class IsOwnerOrAdmin(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        try:
-            user = User.objects.get(pk = request.session['user'] )
-            print(obj.pk == user.pk or user.is_superuser)
-            return (obj.pk == user.pk or user.is_superuser )
-        except:
-            return False
 
 class IsActiveShop(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):

@@ -37,7 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.authentication',
+    'django_filters',
     'rest_framework',
+    'apps.categories_and_labels',
+    'apps.shops',
+    'apps.products',
+    'apps.carts',
+    'apps.bills',
 ]
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'apps.core.exceptions.core_exception_handler',
@@ -45,7 +51,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'apps.authentication.backends.JWTAuthentication',
     ),
-
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }
 """
 'DEFAULT_PERMISSION_CLASSES': [

@@ -1,173 +1,42 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate
-from .models import *
+from .models import User
 
+class UserSerializer(serializers.ModelSerializer):
 
-
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(max_length=128,min_length=8,write_only=True)
     class Meta:
         model = User
-        fields = ['pk','email', 'username', 'password']
-    def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        fields = ['id','username','email','is_active','is_superuser','password']
 
-class UserGetTokenSerializer(serializers.Serializer):
-    email = serializers.CharField(max_length=255)
-    username = serializers.CharField(max_length=255, read_only=True)
-    password = serializers.CharField(max_length=128, write_only=True)
-    token = serializers.CharField(max_length=255, read_only=True)
-
-    def validate(self, data):
-
-        email = data.get('email', None)
-        password = data.get('password', None)
-
-        if email is None:
+    def create(self,validated_data):
+        password = validated_data.get('password')
+        password_confirm = validated_data.pop('password_confirm')
+        print(password,password_confirm)
+        if password != password_confirm :
             raise serializers.ValidationError(
-                'An email address is required to log in.'
+                'confirm password not match!'
             )
+        instance = User.objects.create_user(**validated_data)
+        return instance
 
-        if password is None:
-            raise serializers.ValidationError(
-                'A password is required to log in.'
-            )
-
-
-        user = authenticate(username=email, password=password)
-
-        if user is None:
-            raise serializers.ValidationError(
-                'A user with this email and password was not found.'
-            )
-
-
-        if not user.is_active:
-            raise serializers.ValidationError(
-                'This user has been deactivated.'
-            )
-
-        token = user.token
-        DashBoard(token=token).save()
-        return {
-            'email': user.email,
-            'token': token
-        }
 class UserLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['pk','email', 'username', 'password']
-
-
-class LogoutSerializer(serializers.Serializer):
-    token = serializers.CharField(max_length=255, read_only=True)
-
-class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(max_length=128,min_length=8,write_only=True)
-    class Meta:
-        model = User
-        fields = ('pk','email', 'username', 'password','is_active','is_superuser')
-        read_only_fields = ('email',)
-
+        fields = ['id','username','email','is_active','is_superuser','password']
+        read_only_fields = ['username','email']
     def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        for (key, value) in validated_data.items():
-            setattr(instance, key, value)
+        print(validated_data,)
+        is_active = validated_data.pop("is_active",instance.is_active)
+        is_superuser = validated_data.pop("is_superuser",instance.is_superuser)
+        password = validated_data.pop('password',None)
+        user = validated_data.pop('user')
+        if user.is_superuser == True:
+            instance.is_active = is_active
+            instance.is_superuser = is_superuser
+            instance.save()
+            return instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         if password is not None:
             instance.set_password(password)
         instance.save()
         return instance
-
-class UserBlockSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('pk','email', 'username','is_active')
-        read_only_fields = ('email','username')
-
-    def update(self, instance, validated_data):
-        if not instance.is_superuser:
-            instance.block()
-            return instance
-        else :
-            return validated_data
-
-class UserUnBlockSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('pk','email', 'username','is_active')
-        read_only_fields = ('email','username')
-
-    def update(self, instance, validated_data):
-        instance.unblock()
-        return instance
-
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = '__all__'
-
-class LabelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Label
-        fields = '__all__'
-
-class ShopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = '__all__'
-        read_only_fields = ('status',)
-
-    def create(self, validated_data):
-        return Shop.objects.create(**validated_data)
-
-class ShopGetTokenSerializer(serializers.ModelSerializer):
-    token = serializers.CharField(max_length=128,
-    min_length=8,write_only=True)
-    class Meta:
-        model = Shop
-        fields = ['name','token']
-class ShopLoginSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = '__all__'
-        read_only_fields = ('__all__',)
-
-class ShopActiveSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = ('name','address','phone','token')
-        #read_only_fields = ('name','address','phone','token')
-
-class ShopRejectSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = ('id','name')
-        #read_only_fields = ('__all__',)
-
-class ProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-    def create(self, validated_data):
-        return Product.objects.create(**validated_data)
-
-class CartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cart
-        fields = '__all__'
-
-class CartSerializer(serializers.Serializer):
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-
-
-class BillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-    def create(self, validated_data):
-        return Product.objects.create(**validated_data)
